@@ -175,9 +175,5 @@ Server runs on:
 
 http://localhost:3000
 
---------------------------------------------
-SQLx Offline Support (Recommended)
 
-cargo install sqlx-cli
-cargo sqlx prepare
 
