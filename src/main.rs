@@ -5,6 +5,7 @@ mod handlers;
 mod middleware;
 
 use tracing;
+use anyhow;
 use std::env;
 use tracing_subscriber;
 use axum::{
@@ -15,30 +16,15 @@ use dotenvy;
 use sqlx::PgPool;
 use crate::{handlers::auth::{register, login}, state::AppState};
 use crate::handlers::tasks::{create_task, get_tasks, get_task, update_task, delete_task};
-/*
-Future improvements
 
-Refresh Tokens
-
-Soft Deletes
-
-Task Labels / Tags
-
-Search & Sorting
-
-Rate Limiting
-
-Role-Based Access Control
-
-OpenAPI / Swagger Docs */
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), anyhow::Error> {
     dotenvy::dotenv().ok();
 
     tracing_subscriber::fmt::init();
 
     let db_url = env::var("DATABASE_URL").expect("Can't find database url");
-    let db = PgPool::connect(&db_url).await.unwrap();
+    let db = PgPool::connect(&db_url).await?;
 
     let jwt_secret = env::var("JWT_SECRET").expect("Can't find jwt secret key");
 
@@ -52,21 +38,15 @@ async fn main() {
     let app = Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
-        .route(
-            "/tasks", 
-            post(create_task)
-            .get(get_tasks)
-        )
-        .route(
-            "/tasks/{task_id}",
-             get(get_task)
-            .put(update_task)
-            .delete(delete_task))
-            .with_state(app_state);
+        .route("/tasks", post(create_task).get(get_tasks))
+        .route("/tasks/{task_id}", get(get_task).put(update_task).delete(delete_task))
+        .with_state(app_state);
 
     let addr = "0.0.0.0:3000";
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("Listening on Server {}", addr);
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await?;
+
+    Ok(())
 }
